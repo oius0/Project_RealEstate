@@ -1,0 +1,50 @@
+#include <cpprest/http_listener.h>
+#include <cpprest/json.h>
+#include <iostream>
+
+using namespace web;
+using namespace web::http;
+using namespace web::http::experimental::listener;
+
+void handle_get(http_request request) {
+    ucout << "GET request received" << std::endl;
+
+    json::value response_data;
+    response_data[U("message")] = json::value::string(U("Hello, World!"));
+
+    request.reply(status_codes::OK, response_data);
+}
+
+void handle_post(http_request request) {
+    ucout << "POST request received" << std::endl;
+
+    request.extract_json().then([=](json::value request_data) {
+        ucout << "Received data: " << request_data.serialize() << std::endl;
+
+        json::value response_data;
+        response_data[U("status")] = json::value::string(U("Data received successfully"));
+
+        request.reply(status_codes::OK, response_data);
+    }).wait();
+}
+
+int main() {
+    http_listener listener(U("http://localhost:8080"));
+
+    listener.support(methods::GET, handle_get);
+    listener.support(methods::POST, handle_post);
+
+    try {
+        listener
+            .open()
+            .then([&listener]() { ucout << "Starting server at: " << listener.uri().to_string() << std::endl; })
+            .wait();
+
+        while (true);
+    }
+    catch (const std::exception & e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+
+    return 0;
+}
